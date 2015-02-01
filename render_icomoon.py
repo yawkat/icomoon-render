@@ -4,14 +4,16 @@ import json
 import os
 import sys
 import argparse
+import re
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument("-o", "--output-dir", dest="output_dir", required=True)
+parser.add_argument("-i", "--input-file", dest="input_file", required=True)
 
 args = parser.parse_args()
 
-with open(os.path.join(os.path.dirname(__file__), "font.json")) as f:
+with open(args.input_file) as f:
     glyphs = json.load(f)
 
 # assign characters xe600+
@@ -32,11 +34,17 @@ with open(svg, "w") as f:
                     '<font-face ascent="960" descent="-64" units-per-em="1024"/>'
                     '<missing-glyph horiz-adv-x="1024"/>'
     ))
+
     for glyph in glyphs:
-        f.write('<glyph d="%s" unicode="&#x%x;"' % (glyph["path"], glyph["char"]))
-        if glyph["width"] != 1:
+        char = glyph["char"]
+        path = glyph["path"]
+        path = "".join(path) # concatenate any lists
+
+        f.write('<glyph d="%s" unicode="&#x%x;"' % (path, char))
+        if "width" in glyph and glyph["width"] != 1:
             f.write(' horiz-adv-x="%d"' % (glyph["width"] * 1024))
         f.write('/>')
+
     f.write((
                 '</font>'
             '</defs>'
@@ -50,3 +58,7 @@ css = os.path.join(args.output_dir, "font.css")
 with open(css, "w") as f:
     for glyph in glyphs:
         f.write(".icon-%s:before{content:'\%x'}" % (glyph["name"], glyph["char"]))
+
+        # maybe I should just flip the path instead
+        if "flip" in glyph and glyph["flip"]:
+            f.write(".icon-%s{display:inline-block;transform:scale(1,-1);-ms-transform:scale(1,-1);-moz-transform:scale(1,-1);-webkit-transform:scale(1,-1);-o-transform:scale(1,-1);}" % glyph["name"])
